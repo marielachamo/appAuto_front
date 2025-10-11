@@ -15,6 +15,7 @@ import com.example.appautomovil.ui.screens.HomeScreen
 import com.example.appautomovil.ui.screens.MapScreen
 import com.example.appautomovil.ui.theme.AppAutomovilTheme
 import org.osmdroid.config.Configuration
+import com.example.appautomovil.ui.screens.RouteListScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -55,12 +56,14 @@ fun AppNavigation() {
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
-            // Pantalla inicial
             HomeScreen(onNavigateToMap = { navController.navigate("map") })
         }
         composable("map") {
-            // Pantalla del mapa interactivo
-            MapScreen()
+            MapScreen(navController)
+        }
+        composable("routeList") {
+            RouteListScreen(navController)
         }
     }
+
 }

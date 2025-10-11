@@ -1,5 +1,7 @@
 package com.example.appautomovil.ui.screens
 
+import androidx.navigation.NavController
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.widget.Toast
@@ -35,7 +37,8 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen() {
+fun MapScreen(navController: NavController) {
+
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var isSatellite by remember { mutableStateOf(false) }
@@ -132,9 +135,12 @@ fun MapScreen() {
             contentAlignment = Alignment.CenterStart
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { /* TODO: Menú lateral */ }) {
-                    Icon(Icons.Default.Menu, contentDescription = "Menú")
+                // Botón menú lateral
+                IconButton(onClick = { navController.navigate("routeList") }) {
+                    Icon(Icons.Default.Menu, contentDescription = "Abrir lista de rutas")
                 }
+
+                // Campo de búsqueda
                 TextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -147,12 +153,14 @@ fun MapScreen() {
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
-
                 )
-                IconButton(onClick = { /* TODO: acción de búsqueda */ }) {
-                    Icon(Icons.Default.Search, contentDescription = "Buscar")
+
+                // Botón de recarga o búsqueda
+                IconButton(onClick = { /* TODO: lógica de recarga o filtro */ }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar rutas")
                 }
             }
+
         }
 
         //  Botón cambio de vista (satélite / normal)

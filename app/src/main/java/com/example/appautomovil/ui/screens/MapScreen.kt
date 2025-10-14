@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel // 🧠 NUEVO
 import androidx.navigation.NavController
+import com.example.appautomovil.ui.viewmodel.MapaViewModel // 🧠 NUEVO
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -31,6 +33,15 @@ fun MapScreen(navController: NavController) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
     var showSatellite by remember { mutableStateOf(false) }
+
+    // 🧠 Conectamos el ViewModel (para traer datos del backend)
+    val viewModel: MapaViewModel = viewModel()
+    val paradas by viewModel.paradas.collectAsState()
+
+    // 🚀 Cargamos las paradas cuando se abre la pantalla
+    LaunchedEffect(Unit) {
+        viewModel.cargarParadas()
+    }
 
     //  Permiso de ubicación
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -58,16 +69,37 @@ fun MapScreen(navController: NavController) {
                 mapType = if (showSatellite) MapType.SATELLITE else MapType.NORMAL
             ),
             uiSettings = MapUiSettings(
-                zoomControlsEnabled = false, // quitamos zoom nativo para usar los personalizados
+                zoomControlsEnabled = false,
                 compassEnabled = true
             ),
             cameraPositionState = cameraPositionState
         ) {
+            // 📍 Marcador de referencia
             Marker(
                 state = MarkerState(position = cochabamba),
                 title = "Cochabamba Centro",
                 snippet = "Punto de inicio"
             )
+
+            // 📍 Marcadores dinámicos de las paradas obtenidas del backend
+            // 📍 Marcadores dinámicos de las paradas obtenidas del backend
+            paradas.forEach { parada ->
+                parada.ubicacion?.let { ubicacionStr ->
+                    val partes = ubicacionStr.split(",")
+                    if (partes.size == 2) {
+                        val lat = partes[0].trim().toDoubleOrNull()
+                        val lon = partes[1].trim().toDoubleOrNull()
+                        if (lat != null && lon != null) {
+                            Marker(
+                                state = MarkerState(position = LatLng(lat, lon)),
+                                title = parada.nombreParada ?: "Parada sin nombre",
+                                snippet = "Parada del transporte público"
+                            )
+                        }
+                    }
+                }
+            }
+
         }
 
         //  Barra superior
@@ -98,13 +130,13 @@ fun MapScreen(navController: NavController) {
                     )
                 )
 
-                IconButton(onClick = { /* acción de refrescar */ }) {
+                IconButton(onClick = { viewModel.cargarParadas() }) { // 🔁 Recarga desde el backend
                     Icon(Icons.Default.Refresh, contentDescription = "Actualizar mapa")
                 }
             }
         }
 
-        //  Controles personalizados (ordenados profesionalmente)
+        //  Controles personalizados (zoom, vista, ubicación)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -112,8 +144,6 @@ fun MapScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.End
         ) {
-
-            //  Cambiar vista satélite / normal
             FloatingActionButton(
                 onClick = { showSatellite = !showSatellite },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -125,7 +155,6 @@ fun MapScreen(navController: NavController) {
                 )
             }
 
-            //  Zoom in (Compose simple)
             FloatingActionButton(
                 onClick = {
                     val newZoom = cameraPositionState.position.zoom + 1
@@ -140,7 +169,6 @@ fun MapScreen(navController: NavController) {
                 Icon(Icons.Default.Add, contentDescription = "Acercar mapa")
             }
 
-            // Zoom out
             FloatingActionButton(
                 onClick = {
                     val newZoom = cameraPositionState.position.zoom - 1
@@ -155,7 +183,6 @@ fun MapScreen(navController: NavController) {
                 Icon(Icons.Default.Remove, contentDescription = "Alejar mapa")
             }
 
-            // Botón de ubicación actual
             FloatingActionButton(
                 onClick = {
                     permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -168,3 +195,4 @@ fun MapScreen(navController: NavController) {
         }
     }
 }
+

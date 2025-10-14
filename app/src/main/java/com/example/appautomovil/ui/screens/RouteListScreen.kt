@@ -22,10 +22,10 @@ import androidx.navigation.NavController
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RouteListScreen(navController: NavController) {
-    // 🔍 Estado del texto de búsqueda
+    // Estado del texto de búsqueda
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
 
-    // 🔹 Lista original de rutas
+    //  Lista original de rutas
     val allRoutes = listOf(
         Pair("132 Pakata", "Bus 132: K’ara K’ara ➜ Pakata"),
         Pair("132 K’ara K’ara", "Bus 132: Pakata ➜ K’ara K’ara"),
@@ -34,7 +34,7 @@ fun RouteListScreen(navController: NavController) {
         Pair("222 Cercado", "Bus 222: Cercado ➜ Centro")
     )
 
-    // 🔎 Filtrar rutas según texto ingresado
+    //  Filtrar rutas según texto ingresado
     val filteredRoutes = allRoutes.filter {
         it.first.contains(searchQuery.text, ignoreCase = true) ||
                 it.second.contains(searchQuery.text, ignoreCase = true)
@@ -58,7 +58,7 @@ fun RouteListScreen(navController: NavController) {
                 .fillMaxSize()
                 .background(Color(0xFFF5F5F5))
         ) {
-            // 🔍 Campo de búsqueda funcional (sin ">" aquí)
+            //  Campo de búsqueda funcional (sin ">" aquí)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -78,7 +78,7 @@ fun RouteListScreen(navController: NavController) {
                 )
             )
 
-            // 📋 Lista de rutas con botones ">"
+            //  Lista de rutas con botones ">"
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {

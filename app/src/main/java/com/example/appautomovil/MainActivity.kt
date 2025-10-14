@@ -13,19 +13,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.appautomovil.ui.screens.HomeScreen
 import com.example.appautomovil.ui.screens.MapScreen
-import com.example.appautomovil.ui.theme.AppAutomovilTheme
-import org.osmdroid.config.Configuration
 import com.example.appautomovil.ui.screens.RouteListScreen
+import com.example.appautomovil.ui.theme.AppAutomovilTheme
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        //  Inicializamos la configuración de osmdroid
-        Configuration.getInstance().userAgentValue = packageName
-
-        // Verificamos y pedimos permisos de ubicación si no están concedidos
+        //  Verificamos y pedimos permisos de ubicación
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -41,7 +36,7 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        // Renderizamos la interfaz con Compose
+        // Mostramos la interfaz de tu aplicación
         setContent {
             AppAutomovilTheme {
                 AppNavigation()
@@ -65,5 +60,4 @@ fun AppNavigation() {
             RouteListScreen(navController)
         }
     }
-
 }

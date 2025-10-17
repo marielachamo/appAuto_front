@@ -2,6 +2,7 @@ package com.example.appautomovil.ui.screens
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.location.Location
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,9 +19,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel // 🧠 NUEVO
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.appautomovil.ui.viewmodel.MapaViewModel // 🧠 NUEVO
+import com.example.appautomovil.ui.viewmodel.MapaViewModel
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -28,41 +31,71 @@ import com.google.maps.android.compose.*
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(navController: NavController) {
+fun MapScreen(navController: NavController, rutaId: Int? = null) {
 
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
     var showSatellite by remember { mutableStateOf(false) }
 
-    // 🧠 Conectamos el ViewModel (para traer datos del backend)
+    // 🧠 ViewModel (para datos del backend)
     val viewModel: MapaViewModel = viewModel()
     val paradas by viewModel.paradas.collectAsState()
 
-    // 🚀 Cargamos las paradas cuando se abre la pantalla
-    LaunchedEffect(Unit) {
-        viewModel.cargarParadas()
+    // 🚀 Cargar paradas al iniciar
+    LaunchedEffect(rutaId) {
+        if (rutaId != null) {
+            // Cargar paradas y coordenadas de esta ruta
+            viewModel.cargarParadasPorRuta(rutaId)
+            viewModel.cargarCoordenadasPorRuta(rutaId)
+        } else {
+            // Si no hay rutaId, solo carga todo normalmente
+            viewModel.cargarParadas()
+        }
     }
 
-    //  Permiso de ubicación
+
+    // 📍 Cliente de ubicación y estado actual
+    val fusedLocationClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
+    var userLocation by remember { mutableStateOf<LatLng?>(null) }
+
+    // 🔑 Permiso de ubicación
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        Toast.makeText(
-            context,
-            if (granted) "Ubicación activada " else "Permiso denegado ",
-            Toast.LENGTH_SHORT
-        ).show()
+        if (granted) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                location?.let {
+                    userLocation = LatLng(it.latitude, it.longitude)
+                }
+            }
+        } else {
+            Toast.makeText(context, "Permiso de ubicación denegado", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    //  Coordenadas iniciales (Cochabamba)
+    // 🌍 Coordenadas iniciales (Cochabamba)
     val cochabamba = LatLng(-17.3895, -66.1568)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(cochabamba, 15f)
     }
 
+    // 🚀 Detectar ubicación actual automáticamente
+    LaunchedEffect(Unit) {
+        permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+            location?.let {
+                userLocation = LatLng(it.latitude, it.longitude)
+                cameraPositionState.position =
+                    CameraPosition.fromLatLngZoom(userLocation!!, 16f)
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
 
-        //  Mapa principal
+        // 🗺️ Mapa principal
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             properties = MapProperties(
@@ -74,15 +107,14 @@ fun MapScreen(navController: NavController) {
             ),
             cameraPositionState = cameraPositionState
         ) {
-            // 📍 Marcador de referencia
+            // 📍 Marcador inicial de referencia
             Marker(
                 state = MarkerState(position = cochabamba),
                 title = "Cochabamba Centro",
                 snippet = "Punto de inicio"
             )
 
-            // 📍 Marcadores dinámicos de las paradas obtenidas del backend
-            // 📍 Marcadores dinámicos de las paradas obtenidas del backend
+            // 📍 Marcadores de las paradas desde el backend
             paradas.forEach { parada ->
                 parada.ubicacion?.let { ubicacionStr ->
                     val partes = ubicacionStr.split(",")
@@ -100,9 +132,16 @@ fun MapScreen(navController: NavController) {
                 }
             }
 
+            // 📍 Marcador de la ubicación actual
+            userLocation?.let { location ->
+                Marker(
+                    state = MarkerState(position = location),
+                    title = "Tu ubicación actual",
+                    snippet = "Estás aquí")
+            }
         }
 
-        //  Barra superior
+        // 🔝 Barra superior
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,13 +169,13 @@ fun MapScreen(navController: NavController) {
                     )
                 )
 
-                IconButton(onClick = { viewModel.cargarParadas() }) { // 🔁 Recarga desde el backend
+                IconButton(onClick = { viewModel.cargarParadas() }) {
                     Icon(Icons.Default.Refresh, contentDescription = "Actualizar mapa")
                 }
             }
         }
 
-        //  Controles personalizados (zoom, vista, ubicación)
+        // ⚙️ Controles personalizados (vista, zoom, ubicación)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -186,6 +225,13 @@ fun MapScreen(navController: NavController) {
             FloatingActionButton(
                 onClick = {
                     permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                        location?.let {
+                            userLocation = LatLng(it.latitude, it.longitude)
+                            cameraPositionState.position =
+                                CameraPosition.fromLatLngZoom(userLocation!!, 16f)
+                        }
+                    }
                 },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(55.dp)

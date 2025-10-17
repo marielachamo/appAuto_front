@@ -17,27 +17,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.appautomovil.ui.viewmodel.RutasViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RouteListScreen(navController: NavController) {
-    // Estado del texto de búsqueda
+    // 🔹 ViewModel para obtener datos del backend
+    val viewModel: RutasViewModel = viewModel()
+    val rutas by viewModel.rutas.collectAsState()
+
+    // 🔹 Estado del buscador
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
 
-    //  Lista original de rutas
-    val allRoutes = listOf(
-        Pair("132 Pakata", "Bus 132: K’ara K’ara ➜ Pakata"),
-        Pair("132 K’ara K’ara", "Bus 132: Pakata ➜ K’ara K’ara"),
-        Pair("110 Tiquipaya", "Bus 110: Sud ➜ Tiquipaya"),
-        Pair("240 Norte", "Bus 240: Norte ➜ Centro"),
-        Pair("222 Cercado", "Bus 222: Cercado ➜ Centro")
-    )
+    // 🚀 Cargar rutas desde el backend al abrir la pantalla
+    LaunchedEffect(Unit) {
+        viewModel.cargarRutas()
+    }
 
-    //  Filtrar rutas según texto ingresado
-    val filteredRoutes = allRoutes.filter {
-        it.first.contains(searchQuery.text, ignoreCase = true) ||
-                it.second.contains(searchQuery.text, ignoreCase = true)
+    // 🔹 Filtrar rutas según el texto del buscador
+    val filteredRoutes = rutas.filter { ruta ->
+        ruta.nombreRuta?.contains(searchQuery.text, ignoreCase = true) == true ||
+                ruta.linea?.descripcion?.contains(searchQuery.text, ignoreCase = true) == true
     }
 
     Scaffold(
@@ -58,7 +60,7 @@ fun RouteListScreen(navController: NavController) {
                 .fillMaxSize()
                 .background(Color(0xFFF5F5F5))
         ) {
-            //  Campo de búsqueda funcional (sin ">" aquí)
+            // 🔎 Campo de búsqueda
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -70,7 +72,6 @@ fun RouteListScreen(navController: NavController) {
                     .fillMaxWidth()
                     .padding(12.dp),
                 singleLine = true,
-                //  Corrección final: TextFieldDefaults.colors() universal
                 colors = TextFieldDefaults.colors(
                     focusedIndicatorColor = Color(0xFF3E3E4A),
                     unfocusedIndicatorColor = Color.Gray,
@@ -78,11 +79,11 @@ fun RouteListScreen(navController: NavController) {
                 )
             )
 
-            //  Lista de rutas con botones ">"
+            // 🚍 Lista dinámica de rutas del backend
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(filteredRoutes) { route ->
+                items(filteredRoutes) { ruta ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -103,19 +104,23 @@ fun RouteListScreen(navController: NavController) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    route.first,
+                                    ruta.nombreRuta ?: "Ruta sin nombre",
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFFB2B3FF),
                                     fontSize = 16.sp
                                 )
                                 Text(
-                                    route.second,
+                                    ruta.linea?.descripcion ?: "Sin descripción",
                                     color = Color.White,
                                     fontSize = 14.sp
                                 )
                             }
-                            // Botón lateral (por ahora sin acción)
-                            IconButton(onClick = { /* TODO: acción futura */ }) {
+                            // ➤ Botón lateral
+                            IconButton(onClick = {
+                                // Ejemplo: al pulsar puedes navegar al mapa con esta ruta
+                                // navController.navigate("mapScreen")
+                                navController.navigate("mapScreen/${ruta.idRuta}")
+                            }) {
                                 Icon(
                                     Icons.Default.KeyboardArrowRight,
                                     contentDescription = "Ver detalles",

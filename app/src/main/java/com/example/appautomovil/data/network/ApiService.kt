@@ -12,4 +12,5 @@ interface ApiService {
 
     @GET("coordenadas")
     suspend fun getCoordenadas(): List<CoordenadaRuta>
+
 }

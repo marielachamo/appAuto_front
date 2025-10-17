@@ -4,13 +4,17 @@ import com.example.appautomovil.data.models.*
 import retrofit2.http.GET
 
 interface ApiService {
-    @GET("rutas")
+    @GET("/api/rutas")
     suspend fun getRutas(): List<Ruta>
 
-    @GET("paradas")
+    @GET("/api/paradas")
     suspend fun getParadas(): List<Parada>
 
-    @GET("coordenadas")
+    @GET("/api/coordenadas")
     suspend fun getCoordenadas(): List<CoordenadaRuta>
+
+    @GET("/api/lineas")
+    suspend fun getLineas(): List<Linea>
+
 
 }

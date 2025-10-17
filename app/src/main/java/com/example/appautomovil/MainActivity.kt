@@ -13,7 +13,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.appautomovil.ui.screens.HomeScreen
 import com.example.appautomovil.ui.screens.MapScreen
 import com.example.appautomovil.ui.screens.RouteListScreen
 import com.example.appautomovil.ui.theme.AppAutomovilTheme
@@ -22,7 +21,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ✅ Verificamos y pedimos permisos de ubicación
+        // ✅ Verificamos permisos de ubicación
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -38,7 +37,7 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        // ✅ Mostramos la interfaz de la aplicación
+        // ✅ Cargamos la app
         setContent {
             AppAutomovilTheme {
                 AppNavigation()
@@ -51,15 +50,10 @@ class MainActivity : ComponentActivity() {
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "home") {
+    NavHost(navController = navController, startDestination = "mapScreen") {
 
-        // 🏠 Pantalla principal
-        composable("home") {
-            HomeScreen(onNavigateToMap = { navController.navigate("map") })
-        }
-
-        // 🗺️ Pantalla de mapa sin ruta seleccionada
-        composable("map") {
+        // 🗺️ Pantalla de mapa general (inicio de la app)
+        composable("mapScreen") {
             MapScreen(navController)
         }
 
@@ -68,7 +62,7 @@ fun AppNavigation() {
             RouteListScreen(navController)
         }
 
-        // 📍 Pantalla de mapa con una ruta específica (ejemplo: /mapScreen/5)
+        // 🚏 Pantalla del mapa con una ruta específica
         composable(
             route = "mapScreen/{rutaId}",
             arguments = listOf(navArgument("rutaId") { type = NavType.IntType })

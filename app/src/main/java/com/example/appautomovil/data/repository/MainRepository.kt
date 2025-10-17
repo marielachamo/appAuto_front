@@ -9,4 +9,6 @@ class MainRepository {
     suspend fun getRutas(): List<Ruta> = api.getRutas()
     suspend fun getParadas(): List<Parada> = api.getParadas()
     suspend fun getCoordenadas(): List<CoordenadaRuta> = api.getCoordenadas()
+    suspend fun getLineas(): List<Linea> = api.getLineas()
+
 }

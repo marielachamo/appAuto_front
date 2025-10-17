@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.appautomovil.ui.viewmodel.MapaViewModel
-import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -37,24 +37,12 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
     var showSatellite by remember { mutableStateOf(false) }
 
-    // 🧠 ViewModel (para datos del backend)
+    // 🧠 ViewModel
     val viewModel: MapaViewModel = viewModel()
     val paradas by viewModel.paradas.collectAsState()
+    val nombreLinea by viewModel.nombreLinea.collectAsState()
 
-    // 🚀 Cargar paradas al iniciar
-    LaunchedEffect(rutaId) {
-        if (rutaId != null) {
-            // Cargar paradas y coordenadas de esta ruta
-            viewModel.cargarParadasPorRuta(rutaId)
-            viewModel.cargarCoordenadasPorRuta(rutaId)
-        } else {
-            // Si no hay rutaId, solo carga todo normalmente
-            viewModel.cargarParadas()
-        }
-    }
-
-
-    // 📍 Cliente de ubicación y estado actual
+    // 🌍 Cliente de ubicación
     val fusedLocationClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
@@ -75,20 +63,47 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
         }
     }
 
-    // 🌍 Coordenadas iniciales (Cochabamba)
+    // 🌍 Posición inicial Cochabamba
     val cochabamba = LatLng(-17.3895, -66.1568)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(cochabamba, 15f)
     }
 
-    // 🚀 Detectar ubicación actual automáticamente
+    // 🚀 Cargar paradas cuando se selecciona una ruta
+    LaunchedEffect(rutaId) {
+        if (rutaId != null) {
+            viewModel.cargarDatosPorRutaId(rutaId)
+
+        } else {
+            viewModel.cargarParadas() // Muestra todas si no hay ruta
+        }
+    }
+
+    // ✅ Centrar el mapa automáticamente en la primera parada de la ruta seleccionada
+    LaunchedEffect(paradas) {
+        if (rutaId != null && paradas.isNotEmpty()) {
+            paradas.firstOrNull()?.ubicacion?.let { ubicacionStr ->
+                val partes = ubicacionStr.split(",")
+                if (partes.size == 2) {
+                    val lat = partes[0].trim().toDoubleOrNull()
+                    val lon = partes[1].trim().toDoubleOrNull()
+                    if (lat != null && lon != null) {
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                            LatLng(lat, lon),
+                            17f // Zoom más cerca a la parada
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // 🚀 Detectar ubicación actual
     LaunchedEffect(Unit) {
         permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
             location?.let {
                 userLocation = LatLng(it.latitude, it.longitude)
-                cameraPositionState.position =
-                    CameraPosition.fromLatLngZoom(userLocation!!, 16f)
             }
         }
     }
@@ -107,37 +122,44 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
             ),
             cameraPositionState = cameraPositionState
         ) {
-            // 📍 Marcador inicial de referencia
-            Marker(
-                state = MarkerState(position = cochabamba),
-                title = "Cochabamba Centro",
-                snippet = "Punto de inicio"
-            )
 
-            // 📍 Marcadores de las paradas desde el backend
-            paradas.forEach { parada ->
-                parada.ubicacion?.let { ubicacionStr ->
-                    val partes = ubicacionStr.split(",")
-                    if (partes.size == 2) {
-                        val lat = partes[0].trim().toDoubleOrNull()
-                        val lon = partes[1].trim().toDoubleOrNull()
-                        if (lat != null && lon != null) {
-                            Marker(
-                                state = MarkerState(position = LatLng(lat, lon)),
-                                title = parada.nombreParada ?: "Parada sin nombre",
-                                snippet = "Parada del transporte público"
-                            )
+            // 📍 Mostrar marcador solo si hay ruta seleccionada
+            if (rutaId != null) {
+                paradas.forEach { parada ->
+                    parada.ubicacion?.let { ubicacionStr ->
+                        val partes = ubicacionStr.split(",")
+                        if (partes.size == 2) {
+                            val lat = partes[0].trim().toDoubleOrNull()
+                            val lon = partes[1].trim().toDoubleOrNull()
+                            if (lat != null && lon != null) {
+                                Marker(
+                                    state = MarkerState(position = LatLng(lat, lon)),
+                                    title = parada.nombreParada ?: "Parada",
+                                    snippet = "🚏 Línea ${if (nombreLinea.isNotEmpty()) nombreLinea else "Desconocida"}",
+                                    icon = BitmapDescriptorFactory.defaultMarker(
+                                        BitmapDescriptorFactory.HUE_AZURE
+                                    )
+                                )
+                            }
                         }
                     }
                 }
-            }
+            } //else {
+                // 📍 Si no hay ruta, mostrar marcador base
+               // Marker(
+                  //  state = MarkerState(position = cochabamba),
+                //    title = "Cochabamba Centro",
+                //    snippet = "Punto de referencia"
+               // )
+            //}
 
-            // 📍 Marcador de la ubicación actual
+            // 📍 Marcador de ubicación actual
             userLocation?.let { location ->
                 Marker(
                     state = MarkerState(position = location),
                     title = "Tu ubicación actual",
-                    snippet = "Estás aquí")
+                    snippet = "Estás aquí"
+                )
             }
         }
 
@@ -169,13 +191,16 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
                     )
                 )
 
-                IconButton(onClick = { viewModel.cargarParadas() }) {
+                IconButton(onClick = {
+                    if (rutaId != null) viewModel.cargarDatosPorRutaId(rutaId)
+                    else viewModel.cargarParadas()
+                }) {
                     Icon(Icons.Default.Refresh, contentDescription = "Actualizar mapa")
                 }
             }
         }
 
-        // ⚙️ Controles personalizados (vista, zoom, ubicación)
+        // ⚙️ Controles de vista, zoom y ubicación
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -241,4 +266,3 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
         }
     }
 }
-

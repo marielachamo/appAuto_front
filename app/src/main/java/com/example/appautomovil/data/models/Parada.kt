@@ -5,5 +5,8 @@ data class Parada(
     val nombreParada: String?,
     val tipoParada: String?,
     val estadoParada: String?,
-    val ubicacion: String?
+    val ubicacion: String?,
+    val linea: Linea? = null,
+    val horarios: List<Horario>?,
+    val puestosControl: List<PuestoControl>?
 )

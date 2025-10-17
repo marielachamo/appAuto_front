@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     // Sustituye por la IP real de tu PC o usa 10.0.2.2 si estás en el emulador
-    private const val BASE_URL = "http://192.168.238.54:55555/api/"
+    private const val BASE_URL = "https://bus-back-dgbk.onrender.com/api/"
 
     val instance: Retrofit by lazy {
         Retrofit.Builder()

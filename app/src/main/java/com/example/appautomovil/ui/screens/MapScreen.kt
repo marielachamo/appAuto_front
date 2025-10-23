@@ -28,10 +28,21 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 
+
+// MapScreen.kt (arriba del archivo, fuera de cualquier @Composable)
+private fun String.toLatLngOrNull(): LatLng? {
+    val cleaned = this.replace("(", "").replace(")", "")
+    val parts = cleaned.split(",")
+    if (parts.size != 2) return null
+    val lon = parts[0].trim().toDoubleOrNull() ?: return null
+    val lat = parts[1].trim().toDoubleOrNull() ?: return null
+    return LatLng(lat, lon) // LatLng(lat, lon)
+}
+
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(navController: NavController, rutaId: Int? = null) {
+fun MapScreen(navController: NavController, rutaId: Int? = null,lineaId: Int? = null) {
 
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
@@ -41,6 +52,8 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
     val viewModel: MapaViewModel = viewModel()
     val paradas by viewModel.paradas.collectAsState()
     val nombreLinea by viewModel.nombreLinea.collectAsState()
+    val coordenadas by viewModel.coordenadas.collectAsState()
+
 
     // 🌍 Cliente de ubicación
     val fusedLocationClient = remember {
@@ -70,33 +83,25 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
     }
 
     // 🚀 Cargar paradas cuando se selecciona una ruta
-    LaunchedEffect(rutaId) {
-        if (rutaId != null) {
-            viewModel.cargarDatosPorRutaId(rutaId)
-
-        } else {
-            viewModel.cargarParadas() // Muestra todas si no hay ruta
+    LaunchedEffect(rutaId, lineaId) {
+        when {
+            lineaId != null -> viewModel.cargarParadasPorLinea(lineaId)
+            rutaId != null -> viewModel.cargarDatosPorRutaId(rutaId)
+            else -> viewModel.cargarParadas()
         }
     }
 
     // ✅ Centrar el mapa automáticamente en la primera parada de la ruta seleccionada
     LaunchedEffect(paradas) {
-        if (rutaId != null && paradas.isNotEmpty()) {
-            paradas.firstOrNull()?.ubicacion?.let { ubicacionStr ->
-                val partes = ubicacionStr.split(",")
-                if (partes.size == 2) {
-                    val lat = partes[0].trim().toDoubleOrNull()
-                    val lon = partes[1].trim().toDoubleOrNull()
-                    if (lat != null && lon != null) {
-                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
-                            LatLng(lat, lon),
-                            17f // Zoom más cerca a la parada
-                        )
-                    }
-                }
+        if ((rutaId != null || lineaId !=null) && paradas.isNotEmpty()) {
+            paradas.firstOrNull()?.ubicacion?.toLatLngOrNull()?.let { latLng ->
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                    latLng, 17f
+                )
             }
         }
     }
+
 
     // 🚀 Detectar ubicación actual
     LaunchedEffect(Unit) {
@@ -123,28 +128,33 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
             cameraPositionState = cameraPositionState
         ) {
 
-            // 📍 Mostrar marcador solo si hay ruta seleccionada
-            if (rutaId != null) {
+            if (rutaId != null || lineaId !=null) {
                 paradas.forEach { parada ->
-                    parada.ubicacion?.let { ubicacionStr ->
-                        val partes = ubicacionStr.split(",")
-                        if (partes.size == 2) {
-                            val lat = partes[0].trim().toDoubleOrNull()
-                            val lon = partes[1].trim().toDoubleOrNull()
-                            if (lat != null && lon != null) {
-                                Marker(
-                                    state = MarkerState(position = LatLng(lat, lon)),
-                                    title = parada.nombreParada ?: "Parada",
-                                    snippet = "🚏 Línea ${if (nombreLinea.isNotEmpty()) nombreLinea else "Desconocida"}",
-                                    icon = BitmapDescriptorFactory.defaultMarker(
-                                        BitmapDescriptorFactory.HUE_AZURE
-                                    )
-                                )
-                            }
-                        }
+                    parada.ubicacion?.toLatLngOrNull()?.let { latLng ->
+                        Marker(
+                            state = MarkerState(position = latLng),
+                            title = parada.nombreParada ?: "Parada",
+                            snippet = "🚏 Línea ${if (nombreLinea.isNotEmpty()) nombreLinea else "Desconocida"}",
+                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                        )
                     }
                 }
             }
+            val puntosPolyline = remember(coordenadas) {
+                coordenadas
+                    .sortedBy { it.idCoordenada }
+                    .mapNotNull { it.coordenada?.toLatLngOrNull() }
+            }
+
+            if (puntosPolyline.size >= 2) {
+                Polyline(
+                    points = puntosPolyline,
+                    width = 8f,
+                    geodesic = true
+                            //color = Color(0xFF1976D2) // opcional
+                )
+            }
+
             //else {
                 // 📍 Si no hay ruta, mostrar marcador base
                // Marker(

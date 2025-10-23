@@ -116,11 +116,9 @@ fun RouteListScreen(navController: NavController) {
                                 )
                             }
                             // ➤ Botón lateral para abrir el mapa
+                            // RouteListScreen.kt
                             IconButton(onClick = {
-                                val idRuta = linea.rutas?.firstOrNull()?.idRuta
-                                if (idRuta != null) {
-                                    navController.navigate("mapScreen/$idRuta")
-                                }
+                                navController.navigate("mapScreenLinea/${linea.idLinea}")
                             }) {
                                 Icon(
                                     Icons.Default.KeyboardArrowRight,
@@ -128,6 +126,7 @@ fun RouteListScreen(navController: NavController) {
                                     tint = Color.White
                                 )
                             }
+
                         }
                     }
                 }

@@ -90,4 +90,28 @@ class MapaViewModel : ViewModel() {
             }
         }
     }
+
+    // MapaViewModel.kt
+    fun cargarParadasPorLinea(idLinea: Int) {
+        viewModelScope.launch {
+            try {
+                val todasLineas = repository.getLineas()
+                val lineaSeleccionada = todasLineas.find { it.idLinea == idLinea }
+
+                if (lineaSeleccionada != null) {
+                    _nombreLinea.value = lineaSeleccionada.nombreLinea
+                    _paradas.value = lineaSeleccionada.paradas ?: emptyList()
+                    // Opcional: si quieres también la polilínea de la PRIMERA ruta de esa línea:
+                    _coordenadas.value = lineaSeleccionada.rutas?.firstOrNull()?.coordenadas ?: emptyList()
+                } else {
+                    _nombreLinea.value = ""
+                    _paradas.value = emptyList()
+                    _coordenadas.value = emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e("MAPA", "❌ Error al cargar paradas por línea: ${e.message}", e)
+            }
+        }
+    }
+
 }

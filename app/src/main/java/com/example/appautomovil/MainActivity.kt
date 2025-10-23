@@ -70,5 +70,14 @@ fun AppNavigation() {
             val rutaId = backStackEntry.arguments?.getInt("rutaId")
             MapScreen(navController = navController, rutaId = rutaId)
         }
+        //pantalla del mapa para una linea especifica
+        composable(
+            route = "mapScreenLinea/{lineaId}",
+            arguments = listOf(navArgument("lineaId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val lineaId = backStackEntry.arguments?.getInt("lineaId")
+            MapScreen(navController = navController, rutaId = null, lineaId = lineaId)
+        }
+
     }
 }

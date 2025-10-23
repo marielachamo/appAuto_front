@@ -144,7 +144,8 @@ fun MapScreen(navController: NavController, rutaId: Int? = null) {
                         }
                     }
                 }
-            } //else {
+            }
+            //else {
                 // 📍 Si no hay ruta, mostrar marcador base
                // Marker(
                   //  state = MarkerState(position = cochabamba),

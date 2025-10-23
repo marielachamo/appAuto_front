@@ -1,13 +1,14 @@
 package com.example.appautomovil.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.appautomovil.data.models.*
+import com.example.appautomovil.data.models.Parada
+import com.example.appautomovil.data.models.CoordenadaRuta
 import com.example.appautomovil.data.repository.MainRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import android.util.Log
 
 class MapaViewModel : ViewModel() {
 
@@ -25,6 +26,7 @@ class MapaViewModel : ViewModel() {
     private val _nombreLinea = MutableStateFlow("")
     val nombreLinea: StateFlow<String> = _nombreLinea
 
+
     // 🟢 1️⃣ Cargar todas las paradas (modo general)
     fun cargarParadas() {
         viewModelScope.launch {
@@ -32,55 +34,60 @@ class MapaViewModel : ViewModel() {
                 val listaParadas = repository.getParadas()
                 _paradas.value = listaParadas
 
-                Log.d("Retrofit", "✅ Paradas recibidas: ${listaParadas.size}")
+                Log.d("MAPA", "✅ Paradas recibidas (modo general): ${listaParadas.size}")
                 listaParadas.forEach {
-                    Log.d("Retrofit", "➡️ ${it.nombreParada} - ${it.ubicacion}")
+                    Log.d("MAPA", "➡️ ${it.nombreParada} - ${it.ubicacion}")
                 }
 
             } catch (e: Exception) {
-                Log.e("Retrofit", "❌ Error al cargar paradas: ${e.message}", e)
+                Log.e("MAPA", "❌ Error al cargar paradas: ${e.message}", e)
             }
         }
     }
 
-    // 🚌 2️⃣ Cargar paradas y coordenadas según la ruta seleccionada
+
+    // 🚌 2️⃣ Cargar datos por ID de ruta seleccionada
     fun cargarDatosPorRutaId(idRuta: Int) {
         viewModelScope.launch {
             try {
-                // 1️⃣ Obtener todas las líneas
                 val todasLineas = repository.getLineas()
 
-                // 2️⃣ Buscar la línea que contenga la ruta seleccionada
+                // 🔍 Buscar la línea que contenga la ruta seleccionada
                 val lineaSeleccionada = todasLineas.find { linea ->
                     linea.rutas?.any { it.idRuta == idRuta } == true
                 }
 
                 if (lineaSeleccionada != null) {
-                    // ✅ Guardar nombre de la línea
+                    // ✅ Nombre de la línea
                     _nombreLinea.value = lineaSeleccionada.nombreLinea ?: "Desconocida"
 
-                    // ✅ Paradas de esa línea
-                    _paradas.value = lineaSeleccionada.paradas ?: emptyList()
+                    // ✅ Cargar paradas si existen
+                    if (!lineaSeleccionada.paradas.isNullOrEmpty()) {
+                        _paradas.value = lineaSeleccionada.paradas!!
+                        Log.d("MAPA", "✅ Paradas cargadas: ${_paradas.value.size}")
+                        _paradas.value.forEach {
+                            Log.d("MAPA", "📍 ${it.nombreParada} -> ${it.ubicacion}")
+                        }
+                    } else {
+                        Log.w("MAPA", "⚠️ Línea encontrada pero sin paradas definidas.")
+                        _paradas.value = emptyList()
+                    }
 
-                    // ✅ Coordenadas solo de esa ruta específica
+                    // ✅ Cargar coordenadas opcionales
                     val rutaSeleccionada = lineaSeleccionada.rutas?.find { it.idRuta == idRuta }
                     _coordenadas.value = rutaSeleccionada?.coordenadas ?: emptyList()
 
-                    Log.d("Retrofit", "✅ Línea: ${_nombreLinea.value}")
-                    Log.d("Retrofit", "✅ Paradas cargadas: ${_paradas.value.size}")
-                    Log.d("Retrofit", "✅ Coordenadas cargadas: ${_coordenadas.value.size}")
                 } else {
+                    // ⚠️ Si no se encuentra la línea, limpiar estados
                     _nombreLinea.value = ""
                     _paradas.value = emptyList()
                     _coordenadas.value = emptyList()
-                    Log.w("Retrofit", "⚠️ No se encontró ninguna línea con ruta ID $idRuta")
+                    Log.w("MAPA", "⚠️ No se encontró ninguna línea con ruta ID $idRuta")
                 }
 
             } catch (e: Exception) {
-                Log.e("Retrofit", "❌ Error al cargar datos por ruta ID: ${e.message}", e)
+                Log.e("MAPA", "❌ Error al cargar datos por ruta ID: ${e.message}", e)
             }
         }
     }
-
 }
-

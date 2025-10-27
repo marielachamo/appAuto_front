@@ -10,5 +10,8 @@ class MainRepository {
     suspend fun getParadas(): List<Parada> = api.getParadas()
     suspend fun getCoordenadas(): List<CoordenadaRuta> = api.getCoordenadas()
     suspend fun getLineas(): List<Linea> = api.getLineas()
+    suspend fun getHorarios(): List<Horario> = api.getHorarios()
 
+    // ✅ Versión final: trae la línea con todas sus paradas
+    suspend fun getLineaPorId(idLinea: Int): Linea = api.getLineaPorId(idLinea)
 }

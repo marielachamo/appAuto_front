@@ -70,7 +70,8 @@ fun AppNavigation() {
             val rutaId = backStackEntry.arguments?.getInt("rutaId")
             MapScreen(navController = navController, rutaId = rutaId)
         }
-        //pantalla del mapa para una linea especifica
+
+        // 🚍 Pantalla del mapa para una línea específica
         composable(
             route = "mapScreenLinea/{lineaId}",
             arguments = listOf(navArgument("lineaId") { type = NavType.IntType })
@@ -79,5 +80,19 @@ fun AppNavigation() {
             MapScreen(navController = navController, rutaId = null, lineaId = lineaId)
         }
 
+        // 🕓 Nueva pantalla: Detalle de la línea (horarios e info)
+        composable(
+            route = "linea/{idLinea}/detalle",
+            arguments = listOf(navArgument("idLinea") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val idLinea = backStackEntry.arguments?.getInt("idLinea") ?: 0
+            val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.example.appautomovil.ui.viewmodel.LineasViewModel>()
+            com.example.appautomovil.ui.screens.LineaDetalleScreen(
+                idLinea = idLinea,
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
     }
 }
+

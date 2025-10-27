@@ -1,5 +1,6 @@
 package com.example.appautomovil.ui.screens
 
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -115,17 +116,31 @@ fun RouteListScreen(navController: NavController) {
                                     fontSize = 14.sp
                                 )
                             }
-                            // ➤ Botón lateral para abrir el mapa
-                            // RouteListScreen.kt
-                            IconButton(onClick = {
-                                navController.navigate("mapScreenLinea/${linea.idLinea}")
-                            }) {
-                                Icon(
-                                    Icons.Default.KeyboardArrowRight,
-                                    contentDescription = "Ver detalles",
-                                    tint = Color.White
-                                )
+                            // 🔘 Botones laterales (mapa + más información)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // 🗺️ Botón para abrir mapa
+                                IconButton(onClick = {
+                                    navController.navigate("mapScreenLinea/${linea.idLinea}")
+                                }) {
+                                    Icon(
+                                        Icons.Default.KeyboardArrowRight,
+                                        contentDescription = "Ver en mapa",
+                                        tint = Color.White
+                                    )
+                                }
+
+                                // 🕓 Botón para ver horarios / información extra
+                                IconButton(onClick = {
+                                    navController.navigate("linea/${linea.idLinea}/detalle")
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info, // usa import androidx.compose.material.icons.filled.Info
+                                        contentDescription = "Ver información",
+                                        tint = Color(0xFFB2B3FF)
+                                    )
+                                }
                             }
+
 
                         }
                     }

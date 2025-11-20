@@ -41,8 +41,45 @@ class MapaViewModel : ViewModel() {
     val ubicacionBuscada: StateFlow<LatLng?> = _ubicacionBuscada
     private val _paradasCercanas = MutableStateFlow<List<Parada>>(emptyList())
     val paradasCercanas: StateFlow<List<Parada>> = _paradasCercanas
+    private val _lineasPorCoordenada = MutableStateFlow<List<com.example.appautomovil.data.models.Linea>>(emptyList())
+    val lineasPorCoordenada: StateFlow<List<com.example.appautomovil.data.models.Linea>> = _lineasPorCoordenada
+
+    // dentro de MapaViewModel.kt (añadir arriba de las funciones existentes)
+    private val _lineaParaMostrar = MutableStateFlow<com.example.appautomovil.data.models.Linea?>(null)
+    val lineaParaMostrar: StateFlow<com.example.appautomovil.data.models.Linea?> = _lineaParaMostrar
 
 
+    fun mostrarLineaUnica(linea: com.example.appautomovil.data.models.Linea) {
+        // limpia líneas previas y coloca sólo esta para mostrar
+        _lineasPorCoordenada.value = listOf(linea)
+        _lineaParaMostrar.value = linea
+        Log.d("MAPA", "mostrarLineaUnica -> id=${linea.idLinea}")
+    }
+
+    fun clearLineaParaMostrar() {
+        // limpia la señal y también limpia lineasPorCoordenada si quieres
+        _lineaParaMostrar.value = null
+        // opcional: limpiar la lista que se usa para dibujar
+        // _lineasPorCoordenada.value = emptyList()
+        Log.d("MAPA", "clearLineaParaMostrar -> limpiado")
+    }
+
+    fun buscarLineasPorCoordenada(coord: String) {
+        viewModelScope.launch {
+            try {
+                val resultado = repository.getLineasPorCoordenada(coord)
+                Log.d("MAPA", "buscarLineasPorCoordenada: coord=$coord -> ${resultado.size} lineas")
+                resultado.take(3).forEachIndexed { i, linea ->
+                    Log.d("MAPA", "  linea[$i] id=${linea.idLinea} nombre=${linea.nombreLinea} rutas=${linea.rutas?.size}")
+                }
+                _lineasPorCoordenada.value = resultado
+                Log.d("MAPA", "✅ Lineas por coord ($coord): ${resultado.size}")
+            } catch (e: Exception) {
+                _lineasPorCoordenada.value = emptyList()
+                Log.e("MAPA", "❌ Error buscarLineasPorCoordenada: ${e.message}", e)
+            }
+        }
+    }
     // 🟢 1️⃣ Cargar todas las paradas (modo general)
     fun cargarParadas() {
         viewModelScope.launch {
@@ -106,6 +143,7 @@ class MapaViewModel : ViewModel() {
                     _paradas.value = lineaSeleccionada.paradas ?: emptyList()
                     _coordenadas.value =
                         lineaSeleccionada.rutas?.firstOrNull()?.coordenadas ?: emptyList()
+                    mostrarLineaUnica(lineaSeleccionada)
                     Log.d("MAPA", "✅ Coordenadas cargadas: ${_coordenadas.value.size}")
                 } else {
                     _nombreLinea.value = ""
@@ -142,9 +180,18 @@ class MapaViewModel : ViewModel() {
 
                             // 1. Centrar Mapa
                             _ubicacionBuscada.value = latLng
+                            Log.d("MAPA", "buscarDireccion: latLng encontrado = $latLng, address='$address'")
 
-                            // 2. 🚨 LLAMADA CLAVE: Filtrar paradas cercanas
-                            filtrarParadasPorProximidad(latLng) // <-- ¡Añadido!
+// Filtrar paradas cercanas
+                            filtrarParadasPorProximidad(latLng)
+
+// Construir coordStr en el formato que espera el backend: "lat$lon"
+                            val coordStr = "${latLng.latitude}\$${latLng.longitude}"
+
+                            Log.d("MAPA", "buscarDireccion: llamando buscarLineasPorCoordenada($coordStr)")
+
+// Llamada al repo (ya implementada)
+                            buscarLineasPorCoordenada(coordStr)
 
                             Log.d("MAPA", "✅ Dirección encontrada (API 33+): $latLng")
                         } else {
@@ -182,11 +229,20 @@ class MapaViewModel : ViewModel() {
 
                         // 1. Centrar Mapa
                         _ubicacionBuscada.value = latLng
+                        Log.d("MAPA", "buscarDireccion: latLng encontrado = $latLng, address='$address'")
 
-                        // 2. 🚨 LLAMADA CLAVE: Filtrar paradas cercanas
-                        filtrarParadasPorProximidad(latLng) // <-- ¡Añadido!
+// Filtrar paradas cercanas
+                        filtrarParadasPorProximidad(latLng)
 
-                        Log.d("MAPA", "✅ Dirección encontrada (API < 33): $latLng")
+// Construir coordStr en el formato que espera el backend: "lat$lon"
+                        val coordStr = "${latLng.latitude}\$${latLng.longitude}"
+
+                        Log.d("MAPA", "buscarDireccion: llamando buscarLineasPorCoordenada($coordStr)")
+
+// Llamada al repo (ya implementada)
+                        buscarLineasPorCoordenada(coordStr)
+
+                        Log.d("MAPA", "✅ Dirección encontrada (API 33+): $latLng")
                     } else {
                         _ubicacionBuscada.value = null
                         _paradasCercanas.value = emptyList() // <-- Limpiar en caso de fallo
@@ -230,6 +286,9 @@ class MapaViewModel : ViewModel() {
 
         _paradasCercanas.value = paradasFiltradas
         Log.d("MAPA", "✅ Se encontraron ${paradasFiltradas.size} paradas cerca de la ubicación buscada.")
+        if (paradasFiltradas.isNotEmpty()) {
+            Log.d("MAPA", "  parada[0] raw=${paradasFiltradas[0].ubicacion} parsed=${paradasFiltradas[0].ubicacion?.toLatLngOrNull()}")
+        }
     }
     fun limpiarResultadosBusqueda() {
         _ubicacionBuscada.value = null

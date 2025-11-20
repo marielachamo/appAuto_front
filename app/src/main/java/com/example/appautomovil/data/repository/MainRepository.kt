@@ -14,4 +14,11 @@ class MainRepository {
 
     // ✅ Versión final: trae la línea con todas sus paradas
     suspend fun getLineaPorId(idLinea: Int): Linea = api.getLineaPorId(idLinea)
+
+    suspend fun getLineasPorCoordenada(coord: String): List<Linea> =
+        api.getLineasPorCoordenada(coord)
+
+    // (Opcional) si necesitas la versión de dos coordenadas también:
+    suspend fun getLineasPorDosCoordenadas(coord1: String, coord2: String): List<Linea> =
+        api.getLineasPorDosCoordenadas(coord1, coord2)
 }

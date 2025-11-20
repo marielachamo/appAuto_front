@@ -181,7 +181,27 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
             val puntosPolyline = remember(coordenadas) {
                 coordenadas
                     .sortedBy { it.idCoordenada }
-                    .mapNotNull { it.coordenada?.toLatLngOrNull() }
+                    //.mapNotNull { it.coordenada?.toLatLngOrNull() }
+                    .mapNotNull { coordenadaRuta ->
+                        // 🛑 LÓGICA CLAVE: Dividir la cadena "lat,lng" y convertir a Double
+                        coordenadaRuta.coordenada?.let { coordenadaStr ->
+                            val partes = coordenadaStr.split(',')
+                            if (partes.size == 2) {
+                                val lat = partes[0].trim().toDoubleOrNull()
+                                val lng = partes[1].trim().toDoubleOrNull()
+
+                                // Asumo que el formato en tu BD es LAT,LNG (por el ejemplo "-17.3780,-66.1510")
+                                if (lat != null && lng != null) {
+                                    // Creación de LatLng con (latitud, longitud)
+                                    com.google.android.gms.maps.model.LatLng(lat, lng)
+                                } else {
+                                    null
+                                }
+                            } else {
+                                null
+                            }
+                        }
+                    }
             }
 
             if (puntosPolyline.size >= 2) {

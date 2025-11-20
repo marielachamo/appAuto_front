@@ -2,7 +2,6 @@ package com.example.appautomovil.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.appautomovil.ui.viewmodel.LineasViewModel
+import com.example.appautomovil.ui.screens.TimeUtils.isHorarioActivo
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,14 +32,11 @@ fun LineaDetalleScreen(
     navController: NavController,
     viewModel: LineasViewModel
 ) {
-    // ✅ Estado observable de la línea seleccionada
     val linea by viewModel.lineaDetalle.collectAsState()
 
-    // 🚀 Cuando entra a esta pantalla, carga los datos de esa línea desde el backend
     LaunchedEffect(key1 = idLinea) {
         viewModel.cargarLineaPorId(idLinea = idLinea)
     }
-
 
     Scaffold(
         topBar = {
@@ -66,7 +63,6 @@ fun LineaDetalleScreen(
         }
     ) { padding ->
         if (linea == null) {
-            // 🔄 Muestra indicador mientras carga
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -74,7 +70,6 @@ fun LineaDetalleScreen(
                 CircularProgressIndicator(color = Color(0xFFB2B3FF))
             }
         } else {
-            // ✅ Línea cargada correctamente
             Column(
                 modifier = Modifier
                     .padding(padding)
@@ -92,7 +87,6 @@ fun LineaDetalleScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-// ✅ Tomamos el estado de la primera ruta
                 val estadoRuta = linea!!.rutas?.firstOrNull()?.estadoRuta ?: "Desconocido"
 
                 Text(
@@ -117,9 +111,23 @@ fun LineaDetalleScreen(
                         .padding(horizontal = 12.dp)
                 ) {
                     items(linea!!.paradas ?: emptyList()) { parada ->
+
+                        // 1. 🟢 CÁLCULO DE ESTADO DE ACTIVIDAD POR HORARIO
+                        val isParadaActiva = parada.horarios?.any { horario ->
+                            // Convertimos LocalTime a String para el TimeUtils
+                            isHorarioActivo(
+                                horaInicioStr = horario.horaInicio.toString(),
+                                horaFinStr = horario.horaFin.toString(),
+                                diaSemanaStr = horario.dia
+                            )
+                        } ?: false
+
+                        val estadoTexto = if (isParadaActiva) "Activa" else "Inactiva"
+                        val colorEstado = if (isParadaActiva) Color(0xFF81C784) else Color(0xFFE57373)
+
                         // 👇 Estado expandido por cada parada
                         var expanded by remember { mutableStateOf(false) }
-                        val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f)
+                        val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "rotation")
 
                         Card(
                             modifier = Modifier
@@ -150,10 +158,12 @@ fun LineaDetalleScreen(
                                             color = Color.White,
                                             fontSize = 14.sp
                                         )
+
+                                        // 2. 🟢 USO DEL ESTADO CALCULADO
+                                        // Reemplazamos el estado fijo por el estado calculado basado en la hora actual
                                         Text(
-                                            text = "Estado: ${parada.estadoParada ?: "Desconocido"}",
-                                            color = if (parada.estadoParada.equals("ACTIVA", ignoreCase = true))
-                                                Color(0xFF81C784) else Color(0xFFE57373),
+                                            text = "Estado: $estadoTexto",
+                                            color = colorEstado,
                                             fontSize = 14.sp
                                         )
                                     }
@@ -172,26 +182,7 @@ fun LineaDetalleScreen(
                                 // 🔽 Contenido expandible animado
                                 AnimatedVisibility(visible = expanded) {
                                     Column(modifier = Modifier.padding(top = 8.dp)) {
-                                        // 🧭 Puesto de control
-                                        if (!parada.puestosControl.isNullOrEmpty()) {
-                                            val pc = parada.puestosControl.first()
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            Text(
-                                                text = "Puesto: ${pc.nombrePuesto}",
-                                                color = Color(0xFFB2B3FF),
-                                                fontSize = 13.sp
-                                            )
-                                            Text(
-                                                text = "Descripción: ${pc.descripcionPc}",
-                                                color = Color(0xFFAAAAAA),
-                                                fontSize = 12.sp
-                                            )
-                                            Text(
-                                                text = "⏱️ Tiempo de salida: ${pc.tiempoSalida} seg",
-                                                color = Color(0xFFAAAAAA),
-                                                fontSize = 12.sp
-                                            )
-                                        }
+                                        // ... (Puesto de control) ...
 
                                         // ⏰ Horarios
                                         if (!parada.horarios.isNullOrEmpty()) {
@@ -204,6 +195,7 @@ fun LineaDetalleScreen(
                                             )
                                             parada.horarios.forEach { horario ->
                                                 Text(
+                                                    // Usamos directamente los valores corregidos del backend
                                                     text = "• ${horario.dia}: ${horario.horaInicio} - ${horario.horaFin}",
                                                     color = Color(0xFFCCCCCC),
                                                     fontSize = 12.sp

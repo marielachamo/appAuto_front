@@ -36,6 +36,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import kotlinx.coroutines.flow.asStateFlow
 
 
 // MapScreen.kt (arriba del archivo, fuera de cualquier @Composable)
@@ -405,6 +406,7 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
                     )
 
                     IconButton(onClick = {
+                        lineasViewModel.limpiarLineaSeleccionada()
                         // Aquí puedes añadir la lógica de Geocodificación (búsqueda de calles)
                         viewModel.buscarDireccion(context, searchQuery.text)
                     }) {
@@ -429,7 +431,7 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
                         items(sugerenciasAmostrar) { selectedParada ->
                             SuggestionItem(parada = selectedParada) {
                                 // Acción al seleccionar una sugerencia
-                                searchQuery = TextFieldValue(selectedParada.nombreParada ?: "")
+                                 searchQuery = TextFieldValue(selectedParada.nombreParada ?: "")
 
                                 // Cerrar sugerencias al seleccionar y centrar el mapa
                                 selectedParada.ubicacion?.toLatLngOrNull()?.let { latLng ->

@@ -64,4 +64,7 @@ class LineasViewModel : ViewModel() {
             }
         }
     }
+    fun limpiarLineaSeleccionada() {
+        _lineaDetalle.value = null
+    }
 }

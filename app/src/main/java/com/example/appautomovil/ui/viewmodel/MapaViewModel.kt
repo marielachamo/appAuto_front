@@ -12,10 +12,12 @@ import com.example.appautomovil.data.models.Parada
 import com.example.appautomovil.data.models.CoordenadaRuta
 import com.example.appautomovil.data.repository.MainRepository
 import com.example.appautomovil.utils.toLatLngOrNull //
+import com.example.appautomovil.data.models.*
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 private val BOLIVIA_BOUNDS = LatLngBounds(
@@ -47,6 +49,10 @@ class MapaViewModel : ViewModel() {
     // dentro de MapaViewModel.kt (añadir arriba de las funciones existentes)
     private val _lineaParaMostrar = MutableStateFlow<com.example.appautomovil.data.models.Linea?>(null)
     val lineaParaMostrar: StateFlow<com.example.appautomovil.data.models.Linea?> = _lineaParaMostrar
+    private val _lineaSeleccionada = MutableStateFlow<Linea?>(null)
+    val lineaSeleccionada: StateFlow<Linea?> = _lineaSeleccionada.asStateFlow()
+    private val _lineaTemporal = MutableStateFlow<Linea?>(null)
+    val lineaTemporal: StateFlow<Linea?> = _lineaTemporal.asStateFlow()
 
 
     fun mostrarLineaUnica(linea: com.example.appautomovil.data.models.Linea) {
@@ -64,6 +70,13 @@ class MapaViewModel : ViewModel() {
         Log.d("MAPA", "clearLineaParaMostrar -> limpiado")
     }
 
+    private fun limpiarTodosLosTrazos() {
+        // Estas son las variables que dibujan las líneas en el mapa (MapScreen.kt)
+        _lineaSeleccionada.value = null
+        _lineaTemporal.value = null
+        _lineasPorCoordenada.value = emptyList()
+        Log.d("LIMPIEZA", "✅ Todos los trazos de línea han sido limpiados a NULL/EMPTY.")
+    }
     fun buscarLineasPorCoordenada(coord: String) {
         viewModelScope.launch {
             try {
@@ -143,7 +156,7 @@ class MapaViewModel : ViewModel() {
                     _paradas.value = lineaSeleccionada.paradas ?: emptyList()
                     _coordenadas.value =
                         lineaSeleccionada.rutas?.firstOrNull()?.coordenadas ?: emptyList()
-                    mostrarLineaUnica(lineaSeleccionada)
+                   // mostrarLineaUnica(lineaSeleccionada)
                     Log.d("MAPA", "✅ Coordenadas cargadas: ${_coordenadas.value.size}")
                 } else {
                     _nombreLinea.value = ""
@@ -159,7 +172,7 @@ class MapaViewModel : ViewModel() {
     // --- 🚨 NUEVA FUNCIÓN PARA BÚSQUEDA DE CALLES (GEOCODIFICACIÓN) ---
     fun buscarDireccion(context: Context, address: String) {
         if (address.isBlank()) return
-
+        limpiarTodosLosTrazos()
         // Usamos la implementación adecuada según la versión del SDK de Android.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val geocoder = Geocoder(context)

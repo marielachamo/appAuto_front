@@ -37,6 +37,10 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.compose.ui.res.painterResource
+import com.example.appautomovil.R
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 
 
 // MapScreen.kt (arriba del archivo, fuera de cualquier @Composable)
@@ -62,7 +66,7 @@ fun DrawLineaOnMap(
     // Parámetro opcional: coordenadas externas (ej: las que carga MapaViewModel)
     coordenadasExternas: List<com.example.appautomovil.data.models.CoordenadaRuta>? = null
 ) {
-    // 🗺️ Dibujar marcadores de paradas (igual que antes)
+    //  Dibujar marcadores de paradas (igual que antes)
     linea.paradas?.forEach { parada ->
         parada.ubicacion?.let { ubicStr ->
             // usa la extensión centralizada si existe
@@ -77,26 +81,26 @@ fun DrawLineaOnMap(
                 Marker(
                     state = MarkerState(position = it),
                     title = parada.nombreParada ?: "Parada",
-                    snippet = "🚏 Línea ${linea.nombreLinea}",
+                    snippet = " Línea ${linea.nombreLinea}",
                     icon = BitmapDescriptorFactory.defaultMarker(parseColorToHue(colorMarker))
                 )
             }
         }
     }
 
-    // 🛣️ 1) Prioridad: coordenadasExternas si vienen
+    //  1) Prioridad: coordenadasExternas si vienen
     val puntosDesdeExternas: List<com.google.android.gms.maps.model.LatLng> =
         coordenadasExternas?.mapNotNull { coord ->
             coord.coordenada?.toLatLngOrNull()
         } ?: emptyList()
 
-    // 🛣️ 2) Si no hay externas, intenta usar ruta.coordenadas dentro de linea (como antes)
+    // 2) Si no hay externas, intenta usar ruta.coordenadas dentro de linea (como antes)
     val puntosDesdeLinea: List<com.google.android.gms.maps.model.LatLng> =
         linea.rutas?.flatMap { ruta ->
             ruta.coordenadas?.mapNotNull { c -> c.coordenada?.toLatLngOrNull() } ?: emptyList()
         } ?: emptyList()
 
-    // 🛣️ 3) Fallback: si no hay coordenadas de ruta, construir una polyline con las paradas (orden tal cual vienen)
+    //  3) Fallback: si no hay coordenadas de ruta, construir una polyline con las paradas (orden tal cual vienen)
     val puntosDesdeParadas: List<com.google.android.gms.maps.model.LatLng> =
         linea.paradas?.mapNotNull { parada ->
             parada.ubicacion?.toLatLngOrNull()
@@ -142,14 +146,96 @@ private fun parseColorToHue(colorHex: String): Float {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? = null) {
+    var mostrarBuscadorAvanzado by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
     var showSatellite by remember { mutableStateOf(false) }
 
-    // 🧠 ViewModel
+    //  Estados para el buscador de origen/destino
+    var origen by remember { mutableStateOf("") }
+    var destino by remember { mutableStateOf("") }
+
+//  Coordenadas elegidas para origen/destino
+    var origenLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var destinoLatLng by remember { mutableStateOf<LatLng?>(null) }
+    //  LEER RESULTADOS DE NAVIGATION (SavedStateHandle)
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val savedStateHandle = backStackEntry?.savedStateHandle
+
+    // origen y destino que vengan de SelectLocation / MapPicker
+    val origenResult by savedStateHandle
+        ?.getStateFlow<LatLng?>("origenLatLng", null)
+        ?.collectAsState()
+        ?: remember { mutableStateOf<LatLng?>(null) }
+
+    val destinoResult by savedStateHandle
+        ?.getStateFlow<LatLng?>("destinoLatLng", null)
+        ?.collectAsState()
+        ?: remember { mutableStateOf<LatLng?>(null) }
+    // Texto que viene de SelectLocation / MapPicker
+    val origenLabelResult by savedStateHandle
+        ?.getStateFlow<String?>("origenLabel", null)
+        ?.collectAsState()
+        ?: remember { mutableStateOf<String?>(null) }
+
+    val destinoLabelResult by savedStateHandle
+        ?.getStateFlow<String?>("destinoLabel", null)
+        ?.collectAsState()
+        ?: remember { mutableStateOf<String?>(null) }
+
+
+
+    // cuando cambien, actualizamos los estados locales y el texto de los inputs
+    LaunchedEffect(origenResult) {
+        origenResult?.let { latLng ->
+            origenLatLng = latLng
+            // si tienes texto guardado, úsalo; si no, un texto por defecto
+            origen = origenLabelResult ?: "Origen seleccionado"
+
+            //  importante: al volver de SelectLocation/MapPicker mostramos el panel
+            mostrarBuscadorAvanzado = true
+        }
+    }
+
+    LaunchedEffect(destinoResult) {
+        destinoResult?.let { latLng ->
+            destinoLatLng = latLng
+            destino = destinoLabelResult ?: "Destino seleccionado"
+
+            // también mostramos el panel cuando se elige el destino
+            mostrarBuscadorAvanzado = true
+        }
+    }
+
+    // Cuando llegue el texto de origen, lo ponemos en el input
+    LaunchedEffect(origenLabelResult) {
+        origenLabelResult?.let { label ->
+            origen = label
+        }
+    }
+
+// Cuando llegue el texto de destino, lo ponemos en el input
+    LaunchedEffect(destinoLabelResult) {
+        destinoLabelResult?.let { label ->
+            destino = label
+        }
+    }
+    //  ViewModel
 
     val viewModel: MapaViewModel = viewModel()
+    val rutaOD by viewModel.rutaOD.collectAsState()
+    LaunchedEffect(origenLatLng, destinoLatLng) {
+        if (origenLatLng != null && destinoLatLng != null) {
+            viewModel.calcularRuta(origenLatLng!!, destinoLatLng!!)
+        } else {
+            viewModel.limpiarRuta()
+        }
+    }
+
+
+
+
     val lineasPorCoordenada by viewModel.lineasPorCoordenada.collectAsState()
     val paradas by viewModel.paradas.collectAsState()
     val nombreLinea by viewModel.nombreLinea.collectAsState()
@@ -288,6 +374,34 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
 
     // El contenedor principal es un Box para superponer elementos (Mapa, Barra, FABs)
     Box(modifier = Modifier.fillMaxSize()) {
+        if (mostrarBuscadorAvanzado) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 32.dp, start = 16.dp, end = 16.dp)
+                    .zIndex(5f)
+            ) {
+                BuscadorAvanzado(
+                    navController = navController,
+                    onClose = { mostrarBuscadorAvanzado = false },
+                    origen = origen,
+                    destino = destino,
+                    onClearOrigen = {
+                        origenLatLng = null
+                        origen = ""
+                        savedStateHandle?.set("origenLatLng", null)
+                        savedStateHandle?.set("origenLabel", null)
+                    },
+                    onClearDestino = {
+                        destinoLatLng = null
+                        destino = ""
+                        savedStateHandle?.set("destinoLatLng", null)
+                        savedStateHandle?.set("destinoLabel", null)
+                    }
+                )
+
+            }
+        }
 
         // 🗺️ Mapa principal
         GoogleMap(
@@ -301,6 +415,38 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
             ),
             cameraPositionState = cameraPositionState
         ) {
+            // 🔵 Marcador de ORIGEN
+            origenLatLng?.let { location ->
+                Marker(
+                    state = MarkerState(position = location),
+                    title = "Origen",
+                    snippet = origen.ifEmpty { "Punto de partida" },
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)
+                )
+            }
+
+            // 🔴 Marcador de DESTINO
+            destinoLatLng?.let { location ->
+                Marker(
+                    state = MarkerState(position = location),
+                    title = "Destino",
+                    snippet = destino.ifEmpty { "Punto de llegada" },
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                )
+            }
+
+// ➖ Línea entre ORIGEN y DESTINO (por ahora recta)
+
+            // 🛣️ Ruta real (calle por calle) usando Directions API
+            if (rutaOD.size >= 2) {
+                Polyline(
+                    points = rutaOD,
+                    width = 8f,
+                    geodesic = true,
+                    color = Color(0xFF1976D2)
+                )
+            }
+
 
             // 📍 Marcador de ubicación actual
             userLocation?.let { location ->
@@ -428,10 +574,10 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
                     LazyColumn(
                         modifier = Modifier.heightIn(max = 200.dp) // Limitar altura de la lista
                     ) {
-                        items(sugerenciasAmostrar) { selectedParada ->
+                        items(sugerenciasAmostrar) { selectedParada: Parada ->
                             SuggestionItem(parada = selectedParada) {
                                 // Acción al seleccionar una sugerencia
-                                 searchQuery = TextFieldValue(selectedParada.nombreParada ?: "")
+                                searchQuery = TextFieldValue(selectedParada.nombreParada ?: "")
 
                                 // Cerrar sugerencias al seleccionar y centrar el mapa
                                 selectedParada.ubicacion?.toLatLngOrNull()?.let { latLng ->
@@ -439,6 +585,7 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
                                 }
                             }
                         }
+
                     }
                 }
             }
@@ -509,12 +656,146 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = "Mi ubicación")
             }
+            FloatingActionButton(
+                onClick = { mostrarBuscadorAvanzado = !mostrarBuscadorAvanzado },
+                containerColor = Color(0xFFBBD3FF),
+                shape = RoundedCornerShape(25.dp),
+                modifier = Modifier.size(60.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_car),
+                    contentDescription = "Buscar ruta",
+                    tint = Color.Black,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+
         }
     }
 }
+@Composable
+fun BuscadorAvanzado(
+    navController: NavController,
+    onClose: () -> Unit,
+    origen: String,
+    destino: String,
+    onClearOrigen: () -> Unit,
+    onClearDestino: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White.copy(alpha = 0.95f))
+            .padding(12.dp)
+            .zIndex(20f)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Botón atrás (cierra el panel blanco)
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .size(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = "Volver",
+                    tint = Color.Black,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
 
-// 👇 COSAS QUE DEBEN IR FUERA DE LA FUNCIÓN MAPSCREEN
-// 👇 COSAS QUE DEBEN IR FUERA DE LA FUNCIÓN MAPSCREEN
+            Column(modifier = Modifier.weight(1f)) {
+
+                // ---------- ORIGEN ----------
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = Color(0xFFF0F0F0),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .clickable {
+                            // Ir a pantalla de seleccionar ORIGEN
+                            navController.navigate("selectLocation/origen")
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.RadioButtonChecked,
+                        contentDescription = "Origen",
+                        tint = Color(0xFFFF006E),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = if (origen.isEmpty()) "Ubicación del marcador" else origen,
+                        color = if (origen.isEmpty()) Color(0xFFAAAAAA) else Color.Black,
+                        fontSize = 14.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Botón X solo si hay algo seleccionado
+                    if (origen.isNotEmpty()) {
+                        IconButton(onClick = onClearOrigen) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Limpiar origen"
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ---------- DESTINO ----------
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = Color(0xFFF0F0F0),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .clickable {
+                            // Ir a pantalla de seleccionar DESTINO
+                            navController.navigate("selectLocation/destino")
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Place,
+                        contentDescription = "Destino",
+                        tint = Color(0xFFFF006E),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = if (destino.isEmpty()) "Elige un destino" else destino,
+                        color = if (destino.isEmpty()) Color(0xFFAAAAAA) else Color.Black,
+                        fontSize = 14.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Botón X solo si hay algo seleccionado
+                    if (destino.isNotEmpty()) {
+                        IconButton(onClick = onClearDestino) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Limpiar destino"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun SuggestionItem(parada: Parada, onSuggestionClick: (Parada) -> Unit) {

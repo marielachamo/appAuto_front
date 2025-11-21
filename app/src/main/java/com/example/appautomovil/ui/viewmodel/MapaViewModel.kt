@@ -19,12 +19,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
+import androidx.lifecycle.viewModelScope
+import com.example.appautomovil.data.remote.DirectionsApiClient
+import com.example.appautomovil.data.remote.decodePolyline
+import kotlinx.coroutines.launch
 private val BOLIVIA_BOUNDS = LatLngBounds(
     LatLng(-23.0, -70.0), // Suroeste de Bolivia
     LatLng(-9.0, -57.0)   // Noreste de Bolivia
 )
 class MapaViewModel : ViewModel() {
+    private val _rutaOD = MutableStateFlow<List<LatLng>>(emptyList())
+    val rutaOD = _rutaOD.asStateFlow()
 
     private val repository = MainRepository()
 
@@ -60,6 +65,25 @@ class MapaViewModel : ViewModel() {
         _lineasPorCoordenada.value = listOf(linea)
         _lineaParaMostrar.value = linea
         Log.d("MAPA", "mostrarLineaUnica -> id=${linea.idLinea}")
+    }
+    fun limpiarRuta() {
+        _rutaOD.value = emptyList()
+    }
+
+    fun calcularRuta(origen: LatLng, destino: LatLng) {
+        viewModelScope.launch {
+            try {
+                // Llamamos a tu cliente que ya devuelve la lista de puntos (LatLng)
+                val puntos = DirectionsApiClient.getRoute(origen, destino)
+
+                // Guardamos la ruta en el StateFlow para que el mapa la dibuje
+                _rutaOD.value = puntos
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _rutaOD.value = emptyList()
+            }
+        }
     }
 
     fun clearLineaParaMostrar() {

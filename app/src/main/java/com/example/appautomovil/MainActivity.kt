@@ -17,6 +17,11 @@ import com.example.appautomovil.ui.screens.MapScreen
 import com.example.appautomovil.ui.screens.RouteListScreen
 import com.example.appautomovil.ui.theme.AppAutomovilTheme
 
+// 👇 IMPORTS NUEVOS
+import com.example.appautomovil.ui.screens.SelectLocationScreen
+import com.example.appautomovil.ui.screens.MapPickerScreen
+import com.google.android.gms.maps.model.LatLng
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,19 +85,101 @@ fun AppNavigation() {
             MapScreen(navController = navController, rutaId = null, lineaId = lineaId)
         }
 
-        // 🕓 Nueva pantalla: Detalle de la línea (horarios e info)
+        // 🕓 Detalle de la línea
         composable(
             route = "linea/{idLinea}/detalle",
             arguments = listOf(navArgument("idLinea") { type = NavType.IntType })
         ) { backStackEntry ->
             val idLinea = backStackEntry.arguments?.getInt("idLinea") ?: 0
-            val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.example.appautomovil.ui.viewmodel.LineasViewModel>()
+            val viewModel =
+                androidx.lifecycle.viewmodel.compose.viewModel<com.example.appautomovil.ui.viewmodel.LineasViewModel>()
             com.example.appautomovil.ui.screens.LineaDetalleScreen(
                 idLinea = idLinea,
                 navController = navController,
                 viewModel = viewModel
             )
         }
+
+
+        composable(
+            route = "selectLocation/{tipo}",
+            arguments = listOf(
+                navArgument("tipo") {
+                    type = NavType.StringType
+                    defaultValue = "origen"
+                }
+            )
+        ) { backStackEntry ->
+            val tipo = backStackEntry.arguments?.getString("tipo") ?: "origen"
+
+            SelectLocationScreen(
+                tipo = tipo,
+                onBack = { navController.popBackStack() },
+                onUseMyLocation = { latLng: LatLng ->
+                    val (coordKey, labelKey) = if (tipo == "origen") {
+                        "origenLatLng" to "origenLabel"
+                    } else {
+                        "destinoLatLng" to "destinoLabel"
+                    }
+
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(coordKey, latLng)
+
+                    // Texto que verás en el input
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(labelKey, "Su ubicación")
+
+                    navController.popBackStack()
+                },
+                onPickOnMap = {
+                    navController.navigate("mapPicker/$tipo")
+                }
+            )
+        }
+
+        composable(
+            route = "mapPicker/{tipo}",
+            arguments = listOf(
+                navArgument("tipo") {
+                    type = NavType.StringType
+                    defaultValue = "origen"
+                }
+            )
+        ) { backStackEntry ->
+            val tipo = backStackEntry.arguments?.getString("tipo") ?: "origen"
+
+            MapPickerScreen(
+                tipo = tipo,
+                onPointSelected = { /* opcional, puedes dejarlo vacío */ },
+                onConfirm = { latLng: LatLng ->
+                    val (coordKey, labelKey) = if (tipo == "origen") {
+                        "origenLatLng" to "origenLabel"
+                    } else {
+                        "destinoLatLng" to "destinoLabel"
+                    }
+
+                    // 1) salimos de MapPicker
+                    navController.popBackStack()
+
+                    // 2) guardamos coordenadas y texto
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(coordKey, latLng)
+
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(labelKey, "Punto en el mapa")
+
+                    // 3) cerramos también SelectLocation para volver a MapScreen
+                    navController.popBackStack()
+                },
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
     }
 }
-

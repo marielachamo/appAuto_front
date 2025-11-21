@@ -168,7 +168,7 @@ fun LineaDetalleScreen(
                                         )
                                     }
 
-                                    // 🔽 Flecha giratoria
+                                    //  Flecha giratoria
                                     IconButton(onClick = { expanded = !expanded }) {
                                         Icon(
                                             imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
@@ -179,16 +179,16 @@ fun LineaDetalleScreen(
                                     }
                                 }
 
-                                // 🔽 Contenido expandible animado
+                                // Contenido expandible animado
                                 AnimatedVisibility(visible = expanded) {
                                     Column(modifier = Modifier.padding(top = 8.dp)) {
                                         // ... (Puesto de control) ...
 
-                                        // ⏰ Horarios
+                                        // Horarios
                                         if (!parada.horarios.isNullOrEmpty()) {
                                             Spacer(modifier = Modifier.height(8.dp))
                                             Text(
-                                                text = "🕓 Horarios:",
+                                                text = "Horarios:",
                                                 color = Color(0xFFB2B3FF),
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp

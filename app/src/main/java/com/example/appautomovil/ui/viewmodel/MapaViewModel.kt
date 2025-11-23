@@ -117,6 +117,36 @@ class MapaViewModel : ViewModel() {
             }
         }
     }
+
+    fun buscarLineasPorDosCoordenadas(origen: LatLng, destino: LatLng) {
+        viewModelScope.launch {
+            try {
+                // Limpia trazos anteriores (líneas dibujadas, etc.)
+                limpiarTodosLosTrazos()
+
+                // Construir los strings en el formato que espera el backend: "lat$lon"
+                val coord1 = "${origen.latitude}\$${origen.longitude}"
+                val coord2 = "${destino.latitude}\$${destino.longitude}"
+
+                Log.d("MAPA", "buscarLineasPorDosCoordenadas: coord1=$coord1 coord2=$coord2")
+
+                // Llamada al repositorio (ya tienes esta función en MainRepository)
+                val resultado = repository.getLineasPorDosCoordenadas(coord1, coord2)
+
+                // Guardar en el mismo StateFlow que ya usas para dibujar líneas
+                _lineasPorCoordenada.value = resultado
+
+                Log.d(
+                    "MAPA",
+                    "✅ Lineas por dos coords ($coord1 , $coord2): ${resultado.size}"
+                )
+            } catch (e: Exception) {
+                _lineasPorCoordenada.value = emptyList()
+                Log.e("MAPA", "❌ Error buscarLineasPorDosCoordenadas: ${e.message}", e)
+            }
+        }
+    }
+
     // 🟢 1️⃣ Cargar todas las paradas (modo general)
     fun cargarParadas() {
         viewModelScope.launch {

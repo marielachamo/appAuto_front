@@ -208,13 +208,6 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
         }
     }
 
-    // Cuando llegue el texto de origen, lo ponemos en el input
-    LaunchedEffect(origenLabelResult) {
-        origenLabelResult?.let { label ->
-            origen = label
-        }
-    }
-
 // Cuando llegue el texto de destino, lo ponemos en el input
     LaunchedEffect(destinoLabelResult) {
         destinoLabelResult?.let { label ->
@@ -224,17 +217,16 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
     //  ViewModel
 
     val viewModel: MapaViewModel = viewModel()
-    val rutaOD by viewModel.rutaOD.collectAsState()
     LaunchedEffect(origenLatLng, destinoLatLng) {
         if (origenLatLng != null && destinoLatLng != null) {
-            viewModel.calcularRuta(origenLatLng!!, destinoLatLng!!)
+            // 👉 NUEVO: llamar al endpoint dual del backend
+            viewModel.buscarLineasPorDosCoordenadas(origenLatLng!!, destinoLatLng!!)
         } else {
+            // Si se limpia uno de los dos, limpiamos también la ruta y resultados
             viewModel.limpiarRuta()
+            viewModel.limpiarResultadosBusqueda()
         }
     }
-
-
-
 
     val lineasPorCoordenada by viewModel.lineasPorCoordenada.collectAsState()
     val paradas by viewModel.paradas.collectAsState()
@@ -438,14 +430,6 @@ fun MapScreen(navController: NavController, rutaId: Int? = null, lineaId: Int? =
 // ➖ Línea entre ORIGEN y DESTINO (por ahora recta)
 
             // 🛣️ Ruta real (calle por calle) usando Directions API
-            if (rutaOD.size >= 2) {
-                Polyline(
-                    points = rutaOD,
-                    width = 8f,
-                    geodesic = true,
-                    color = Color(0xFF1976D2)
-                )
-            }
 
 
             // 📍 Marcador de ubicación actual
